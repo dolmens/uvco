@@ -1,0 +1,21 @@
+AccessModifierOffset: -4
+IndentWidth: 4
+ContinuationIndentWidth: 8
+
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AlwaysBreakTemplateDeclarations: MultiLine
+
+PenaltyReturnTypeOnItsOwnLine: 150
+
+AllowShortFunctionsOnASingleLine: InlineOnly
+
+AlignAfterOpenBracket: Align
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+BinPackArguments: false
+
+AlwaysBreakTemplateDeclarations: Yes
+
+PointerAlignment: Right
+
+AllowShortIfStatementsOnASingleLine: WithoutElse
