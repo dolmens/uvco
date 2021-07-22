@@ -33,17 +33,11 @@ namespace impl {
 
 class task_promise_base {
 public:
-    constexpr std::suspend_never initial_suspend() noexcept {
-        return {};
-    }
+    constexpr std::suspend_never initial_suspend() noexcept { return {}; }
 
-    constexpr std::suspend_always final_suspend() noexcept {
-        return {};
-    }
+    constexpr std::suspend_always final_suspend() noexcept { return {}; }
 
-    void unhandled_exception() {
-        exception_ = std::current_exception();
-    }
+    void unhandled_exception() { exception_ = std::current_exception(); }
 
 protected:
     std::exception_ptr exception_;
@@ -79,7 +73,7 @@ public:
         return coroutine_handle_t::from_promise(*this);
     }
 
-    void return_void() { }
+    void return_void() {}
 
     void result() {
         if (exception_) {
@@ -442,9 +436,7 @@ public:
 
         constexpr bool await_ready() const noexcept { return false; }
 
-        int await_resume() const noexcept {
-            return status;
-        }
+        int await_resume() const noexcept { return status; }
 
         static void connect_cb(uv_connect_t *req, int status) {
             auto *self = (connect_op *)(req->data);
@@ -545,9 +537,7 @@ public:
             uv_write(req, (uv_stream_t *)socket->get(), &buf, 1, write_cb);
         }
 
-        int await_resume() const noexcept {
-            return status;
-        }
+        int await_resume() const noexcept { return status; }
 
         static void write_cb(uv_write_t *req, int status) {
             auto *self = (write_op *)(req->data);

@@ -1,9 +1,9 @@
+BasedOnStyle: LLVM
 AccessModifierOffset: -4
 IndentWidth: 4
 ContinuationIndentWidth: 8
 
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-AlwaysBreakTemplateDeclarations: MultiLine
+PenaltyBreakAssignment: 4
 
 PenaltyReturnTypeOnItsOwnLine: 150
 
@@ -11,11 +11,12 @@ AllowShortFunctionsOnASingleLine: InlineOnly
 
 AlignAfterOpenBracket: Align
 AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
 BinPackParameters: false
 BinPackArguments: false
 
 AlwaysBreakTemplateDeclarations: Yes
 
-PointerAlignment: Right
-
 AllowShortIfStatementsOnASingleLine: WithoutElse
+
+SortIncludes: false
