@@ -10,7 +10,7 @@ add_executable(uvco_test
     )
 
 target_include_directories(uvco_test PRIVATE
-    ${CMAKE_SOURCE_DIR}/cppcoro/include
+    ${CppcoroIncludeDir}
     )
 
 target_link_libraries(uvco_test PRIVATE
