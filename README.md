@@ -12,6 +12,8 @@ git submodule update --init
 cmake -Bbuild -DCMAKE_CXX_COMPILER=g++-11
 cmake --build build -v
 ```
+## dependecies
+uvco itself does NOT depend on libraries other than libuv, and it provides a task<T>, which is not-awaitable, that you can use as your coroutine functions return type. It did not provide advanced coroutine semantics, such as `when_all`, `async_scope`, which are required in some cases like tcp server programming, in that case, you can just include cppcoro in your application to use them. uvco::scheduler::schedule(task) can accept cppcoro::task as well.
 
 ## `fs read/write`
 ```c++
