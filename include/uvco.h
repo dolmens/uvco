@@ -30,7 +30,7 @@ protected:
 template <typename T>
 class task;
 
-namespace impl {
+namespace detail {
 
 class task_promise_base {
 public:
@@ -165,12 +165,12 @@ private:
     std::exception_ptr exception_;
 };
 
-} // namespace impl
+} // namespace detail
 
 template <typename T = void>
 class [[nodiscard]] task {
 public:
-    using promise_type = impl::task_promise<T>;
+    using promise_type = detail::task_promise<T>;
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     task(coroutine_handle_t coh) noexcept : coh_(coh) {}
@@ -946,7 +946,7 @@ private:
     std::deque<recv_op *> waitingReaders;
 };
 
-namespace impl {
+namespace detail {
 struct sleep_op : public component {
     sleep_op(int64_t delay) : delay(delay) {}
     sleep_op(const scheduler_ptr &sched, int64_t delay)
@@ -973,13 +973,13 @@ private:
     uv_timer_t timer;
     std::coroutine_handle<> coh;
 };
-} // namespace impl
+} // namespace detail
 
-inline impl::sleep_op sleep(int64_t ms) {
+inline detail::sleep_op sleep(int64_t ms) {
     return {ms};
 }
 
-inline impl::sleep_op sleep(const scheduler_ptr &sched, int64_t ms) {
+inline detail::sleep_op sleep(const scheduler_ptr &sched, int64_t ms) {
     return {sched, ms};
 }
 
