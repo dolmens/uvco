@@ -92,7 +92,7 @@ public:
                                T,
                                T &&>;
 
-    rvalue_type &&result() && {
+    rvalue_type result() && {
         if (result_type_ == result_type::exception) {
             std::rethrow_exception(exception_);
         }
