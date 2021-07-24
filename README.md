@@ -8,7 +8,6 @@ If you already linked libuv, then you can simply add the include directory to yo
 ## build
 
 ```bash
-git submodule update --init
 cmake -Bbuild -DCMAKE_CXX_COMPILER=g++-11
 cmake --build build -v
 ```

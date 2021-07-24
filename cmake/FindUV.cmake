@@ -7,8 +7,8 @@ find_package_handle_standard_args(UV
     )
 
 if(UV_FOUND)
-    add_library(UV::uv UNKNOWN IMPORTED)
-    set_target_properties(UV::uv PROPERTIES
+    add_library(uv UNKNOWN IMPORTED)
+    set_target_properties(uv PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${UV_INCLUDE_DIR}"
         IMPORTED_LOCATION "${UV_LIBRARY}"
         )

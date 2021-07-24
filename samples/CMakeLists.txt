@@ -6,7 +6,7 @@ add_executable(uvcosample
     )
 
 target_include_directories(uvcosample PRIVATE
-    ${CMAKE_SOURCE_DIR}/cppcoro/include
+    ${CppcoroIncludeDir}
     )
 
 target_link_libraries(uvcosample PRIVATE
