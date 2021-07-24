@@ -6,6 +6,7 @@
 #include <memory>
 
 #include <cassert>
+#include <any>
 #include <deque>
 
 // TODO comment
@@ -205,6 +206,56 @@ private:
     std::coroutine_handle<promise_type> coh_;
 };
 
+namespace detail {
+
+template <typename T, typename = std::void_t<>>
+struct is_awaiter : std::false_type {};
+
+template <typename T>
+struct is_awaiter<T, std::void_t<decltype(std::declval<T>().await_resume())>>
+    : std::true_type {};
+
+template <typename T>
+auto get_awaiter_impl(T &&value, int) noexcept(
+        noexcept(static_cast<T &&>(value).operator co_await()))
+        -> decltype(static_cast<T &&>(value).operator co_await()) {
+    return static_cast<T &&>(value).operator co_await();
+}
+
+template <typename T>
+auto get_awaiter_impl(T &&value, long) noexcept(
+        noexcept(operator co_await(static_cast<T &&>(value))))
+        -> decltype(operator co_await(static_cast<T &&>(value))) {
+    return operator co_await(static_cast<T &&>(value));
+}
+
+template <typename T, std::enable_if_t<is_awaiter<T &&>::value, int> = 0>
+T &&get_awaiter_impl(T &&value, std::any) noexcept {
+    return static_cast<T &&>(value);
+}
+
+template <typename T>
+auto get_awaiter(T &&value) noexcept(
+        noexcept(detail::get_awaiter_impl(static_cast<T &&>(value), 123)))
+        -> decltype(detail::get_awaiter_impl(static_cast<T &&>(value), 123)) {
+    return detail::get_awaiter_impl(static_cast<T &&>(value), 123);
+}
+
+template <typename T>
+struct wrapper_task_result {
+    using type = std::remove_reference_t<T> &;
+};
+
+template <>
+struct wrapper_task_result<void> {
+    using type = void;
+};
+
+template <typename T>
+using wrapper_task_result_t = typename wrapper_task_result<T>::type;
+
+} // namespace detail
+
 class scheduler {
 public:
     static scheduler_ptr get_default() {
@@ -222,10 +273,29 @@ public:
         return scheduler_ptr{new scheduler{std::move(loop)}};
     }
 
-    template <typename Task>
-    decltype(auto) schedule(Task &&task) {
+    template <typename T>
+    decltype(auto) schedule(task<T> &t) {
         uv_run(loop(), UV_RUN_DEFAULT);
-        return std::forward<Task>(task).result();
+        return t.result();
+    }
+
+    template <typename T>
+    decltype(auto) schedule(task<T> &&t) {
+        uv_run(loop(), UV_RUN_DEFAULT);
+        return static_cast<task<T> &&>(t).result();
+    }
+
+    template <typename AWAITABLE>
+    decltype(auto) schedule(AWAITABLE &&awaitable) {
+        using awaiter_t =
+                decltype(detail::get_awaiter(std::declval<AWAITABLE>()));
+        using result_t = decltype(std::declval<awaiter_t>().await_resume());
+        auto t = ([&]() -> task<detail::wrapper_task_result_t<result_t>> {
+            co_return co_await awaitable;
+        })();
+        uv_run(loop(), UV_RUN_DEFAULT);
+
+        return static_cast<result_t>(t.result());
     }
 
 private:
@@ -947,6 +1017,7 @@ private:
 };
 
 namespace detail {
+
 struct sleep_op : public component {
     sleep_op(int64_t delay) : delay(delay) {}
     sleep_op(const scheduler_ptr &sched, int64_t delay)
@@ -973,6 +1044,7 @@ private:
     uv_timer_t timer;
     std::coroutine_handle<> coh;
 };
+
 } // namespace detail
 
 inline detail::sleep_op sleep(int64_t ms) {
