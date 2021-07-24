@@ -5,6 +5,7 @@
 #include <coroutine>
 #include <memory>
 
+#include <cassert>
 #include <deque>
 
 // TODO comment
@@ -36,11 +37,6 @@ public:
     constexpr std::suspend_never initial_suspend() noexcept { return {}; }
 
     constexpr std::suspend_always final_suspend() noexcept { return {}; }
-
-    void unhandled_exception() { exception_ = std::current_exception(); }
-
-protected:
-    std::exception_ptr exception_;
 };
 
 template <typename T>
@@ -48,20 +44,70 @@ class task_promise : public task_promise_base {
     using coroutine_handle_t = std::coroutine_handle<task_promise<T>>;
 
 public:
+    task_promise() noexcept {}
+
+    ~task_promise() {
+        switch (result_type_) {
+        case result_type::value:
+            value_.~T();
+            break;
+        case result_type::exception:
+            exception_.~exception_ptr();
+            break;
+        default:
+            break;
+        }
+    }
+
     auto get_return_object() noexcept {
         return coroutine_handle_t::from_promise(*this);
     }
 
-    void return_value(T &&result) noexcept { result_ = std::move(result); }
-
-    T &&result() {
-        if (exception_) {
-            std::rethrow_exception(exception_);
-        }
-        return std::move(result_);
+    void unhandled_exception() noexcept {
+        ::new (static_cast<void *>(std::addressof(exception_)))
+                std::exception_ptr(std::current_exception());
+        result_type_ = result_type::exception;
     }
 
-    T result_;
+    template <typename VALUE,
+              typename = std::enable_if_t<std::is_convertible_v<VALUE &&, T>>>
+    void return_value(VALUE &&value) noexcept(
+            std::is_nothrow_constructible_v<T, VALUE &&>) {
+        new (static_cast<void *>(std::addressof(value_)))
+                T(std::forward<VALUE>(value));
+        result_type_ = result_type::value;
+    }
+
+    T &result() & {
+        if (result_type_ == result_type::exception) {
+            std::rethrow_exception(exception_);
+        }
+
+        assert(result_type_ == result_type::value);
+        return value_;
+    }
+
+    using rvalue_type =
+            std::conditional_t<std::is_arithmetic_v<T> || std::is_pointer_v<T>,
+                               T,
+                               T &&>;
+
+    rvalue_type &&result() && {
+        if (result_type_ == result_type::exception) {
+            std::rethrow_exception(exception_);
+        }
+
+        assert(result_type_ == result_type::value);
+        return std::move(value_);
+    }
+
+private:
+    enum class result_type { empty, value, exception };
+    result_type result_type_ = result_type::empty;
+    union {
+        T value_;
+        std::exception_ptr exception_;
+    };
 };
 
 template <>
@@ -69,17 +115,54 @@ class task_promise<void> : public task_promise_base {
     using coroutine_handle_t = std::coroutine_handle<task_promise<void>>;
 
 public:
+    void unhandled_exception() noexcept {
+        exception_ = std::current_exception();
+    }
+
     auto get_return_object() noexcept {
         return coroutine_handle_t::from_promise(*this);
     }
 
-    void return_void() {}
+    void return_void() noexcept {}
 
     void result() {
         if (exception_) {
             std::rethrow_exception(exception_);
         }
     }
+
+private:
+    std::exception_ptr exception_;
+};
+
+template <typename T>
+class task_promise<T &> : public task_promise_base {
+    using coroutine_handle_t = std::coroutine_handle<task_promise<T &>>;
+
+public:
+    task_promise() noexcept = default;
+
+    auto get_return_object() noexcept {
+        return coroutine_handle_t::from_promise(*this);
+    }
+
+    void unhandled_exception() noexcept {
+        exception_ = std::current_exception();
+    }
+
+    void return_value(T &value) noexcept { value_ = std::addressof(value); }
+
+    T &result() {
+        if (exception_) {
+            std::rethrow_exception(exception_);
+        }
+
+        return *value_;
+    }
+
+private:
+    T *value_{nullptr};
+    std::exception_ptr exception_;
 };
 
 } // namespace impl
@@ -115,7 +198,8 @@ public:
         }
     }
 
-    decltype(auto) result() { return coh_.promise().result(); }
+    decltype(auto) result() & { return coh_.promise().result(); }
+    decltype(auto) result() && { return std::move(coh_.promise()).result(); }
 
 private:
     std::coroutine_handle<promise_type> coh_;
@@ -141,7 +225,7 @@ public:
     template <typename Task>
     decltype(auto) schedule(Task &&task) {
         uv_run(loop(), UV_RUN_DEFAULT);
-        return task.result();
+        return std::forward<Task>(task).result();
     }
 
 private:
