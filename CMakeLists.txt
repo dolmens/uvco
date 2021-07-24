@@ -21,3 +21,8 @@ target_link_libraries(uvco INTERFACE
     )
 
 add_subdirectory(samples)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
