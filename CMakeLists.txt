@@ -3,6 +3,8 @@ project(uvco LANGUAGES C CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
+option(WITH_ASAN "enable sanitize" OFF)
+
 option(WITH_LOCAL_LIBUV "force build with local libuv repo fetched from github" OFF)
 
 if(NOT WITH_LOCAL_LIBUV)
@@ -51,6 +53,11 @@ target_include_directories(uvco INTERFACE
 target_link_libraries(uvco INTERFACE
     uv
     )
+
+if(WITH_ASAN)
+    target_compile_options(uvco INTERFACE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_libraries(uvco INTERFACE -fsanitize=address)
+endif()
 
 add_subdirectory(samples)
 
