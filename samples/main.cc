@@ -24,6 +24,7 @@ uvco::task<> runtestfs(const char *srcPath, const char *dstPath) {
         co_await fdst.write(buf.get(), rd);
     }
 
+    // this is optional
     co_await cppcoro::when_all(fsrc.close(), fdst.close());
 }
 

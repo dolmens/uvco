@@ -42,6 +42,7 @@ uvco::task<> runtestfs(const char *srcPath, const char *dstPath) {
         co_await fdst.write(buf.get(), rd);
     }
 
+    // this is optional
     co_await cppcoro::when_all(fsrc.close(), fdst.close());
 }
 
@@ -80,9 +81,7 @@ uvco::task<> runtesttcpserver() {
         server.listen("0.0.0.0", 4321);
         // demo only, just accept 3 connections
         for (int i = 0; i < 3; i++) {
-            uvco::tcp client(server.scheduler());
-            int rc = co_await server.accept(&client);
-            assert(rc == 0);
+            uvco::tcp client = co_await server.accept();
             scope.spawn(handle_connection(std::move(client)));
         }
     } catch (...) {
