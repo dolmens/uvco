@@ -514,9 +514,15 @@ private:
     uv_file file{-1};
 };
 
+namespace {
+void on_close_handle(uv_handle_t *handle) {
+    delete handle;
+}
+} // namespace
+
 template <typename U>
 class handle : public component {
-public:
+protected:
     handle() : pointer(nullptr) {}
 
     handle(U *pointer) : pointer(pointer) {}
@@ -541,8 +547,7 @@ public:
         if (this != &rhs) {
             component::operator=(std::move(rhs));
             if (pointer) {
-                uv_close((uv_handle_t *)pointer, NULL);
-                delete pointer;
+                uv_close((uv_handle_t *)pointer, on_close_handle);
             }
             pointer = rhs.pointer;
             if (pointer) {
@@ -553,25 +558,58 @@ public:
         return *this;
     }
 
-protected:
     virtual ~handle() {
         if (pointer) {
-            uv_close((uv_handle_t *)pointer, NULL);
-            delete pointer;
+            uv_close((uv_handle_t *)pointer, on_close_handle);
         }
     }
 
+public:
     U *get() const { return pointer; }
 
+    struct close_op;
+    close_op close() { return {this}; }
+
+    struct close_op {
+        close_op(handle *h) : h(h) {}
+
+        constexpr bool await_ready() const noexcept { return false; }
+
+        void await_suspend(std::coroutine_handle<> coh) noexcept {
+            this->coh = coh;
+            h->closeOp = this;
+            uv_close((uv_handle_t *)h->get(), close_cb);
+        }
+
+        void await_resume() const noexcept {}
+
+        void resume() { coh.resume(); }
+
+    private:
+        handle *h;
+        std::coroutine_handle<> coh;
+    };
+
 private:
+    static void close_cb(uv_handle_t *h) {
+        auto *self = (handle *)(h->data);
+        delete self->pointer;
+        self->pointer = nullptr;
+        auto *closeOp = self->closeOp;
+        self->closeOp = nullptr;
+        closeOp->resume();
+    }
+
     U *pointer;
+    close_op *closeOp{nullptr};
 };
 
 template <typename T, typename U>
 class stream : public handle<U> {
-public:
     using Base = handle<U>;
     using Base::Base;
+
+public:
     using ReadData = std::tuple<ssize_t, std::unique_ptr<char[]>>;
 
     struct connect_op;
