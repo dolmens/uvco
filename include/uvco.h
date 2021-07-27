@@ -617,7 +617,7 @@ public:
     struct read_op;
     struct write_op;
 
-    accept_op accept(T *client) { return {this, client}; }
+    accept_op accept() { return {this}; }
 
     read_op read() { return {this}; }
 
@@ -648,7 +648,7 @@ public:
     };
 
     struct accept_op {
-        accept_op(stream *server, T *client) : server(server), client(client) {}
+        accept_op(stream *server) : server(server) {}
 
         bool await_ready() const noexcept {
             if (server->pendingConns) {
@@ -663,9 +663,12 @@ public:
             server->waitingAcceptors.push_back(this);
         }
 
-        int await_resume() noexcept {
-            return uv_accept((uv_stream_t *)server->get(),
-                             (uv_stream_t *)client->get());
+        T await_resume() noexcept {
+            T client(server->scheduler());
+            int rc = uv_accept((uv_stream_t *)server->get(),
+                               (uv_stream_t *)client.get());
+            assert(rc == 0);
+            return client;
         }
 
     private:
@@ -674,7 +677,6 @@ public:
         void resume() { coh.resume(); }
 
         stream *server;
-        T *client;
         std::coroutine_handle<> coh;
     };
 

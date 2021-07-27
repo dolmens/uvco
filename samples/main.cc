@@ -45,9 +45,7 @@ uvco::task<> runtesttcpserver() {
         server.listen("0.0.0.0", 4321);
         // demo only, just accept 3 connections
         for (int i = 0; i < 3; i++) {
-            uvco::tcp client(server.scheduler());
-            int rc = co_await server.accept(&client);
-            assert(rc == 0);
+            uvco::tcp client = co_await server.accept();
             scope.spawn(handle_connection(std::move(client)));
         }
     } catch (...) {
@@ -72,9 +70,7 @@ uvco::task<> runtestpipeserver() {
     server.listen("/tmp/uvcopipetest");
     // demo only, just accept 3 connections
     for (int i = 0; i < 3; i++) {
-        uvco::pipe client(server.scheduler());
-        int rc = co_await server.accept(&client);
-        assert(rc == 0);
+        uvco::pipe client = co_await server.accept();
         scope.spawn(handle_connection(std::move(client)));
     }
     co_await scope.join();
